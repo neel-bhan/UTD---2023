@@ -1,132 +1,56 @@
-
+import math
 import pandas as pd
-import random
-from tkinter import Tk, Button, Frame
-from tkinter import messagebox
+import matplotlib.pyplot as plt
 
-# Function to print the board on the GUI
-def print_board(board):
-    for i in range(3):
-        for j in range(3):
-            button_text = board[i][j]
-            buttons[i][j].config(text=button_text)
+column = ['col1', 'col2']
+df = pd.read_csv('data.train', names=column)
 
-# Function to check for a win
-def check_win(board):
-    # Check rows
-    for row in board:
-        if row[0] == row[1] == row[2] != " ":
-            return True
+list_x = df['col1'].tolist()
+list_y = df['col2'].tolist()
 
-    # Check columns
-    for col in range(3):
-        if board[0][col] == board[1][col] == board[2][col] != " ":
-            return True
+print(list_x)
+print(list_y)
+def error(m, b, xL, yL):
+    totalloss = 0
+    num = len(xL)
+    for i in range(num):
+        x = xL[i]
+        y = yL[i]
+        totalloss += float((y - (m * x + b))**2)
+    return totalloss / float(num)
 
-    # Check diagonals
-    if board[0][0] == board[1][1] == board[2][2] != " ":
-        return True
-    if board[0][2] == board[1][1] == board[2][0] != " ":
-        return True
+def da(a, b, count):
+    sum = 0
+    for i in range(count):
+        sum += 2 * (a * list_x[i] + b - list_y[i]) * list_x[i]
+    return sum/count
 
-    return False
+def db(a, b,count):
+    sum = 0
+    for i in range(count):
+        sum +=  2 * (a * list_x[i] + b - list_y[i])
+    return sum/count
 
-# Function for the computer's move
-def make_computer_move():
-    available_moves = []
-    for i in range(3):
-        for j in range(3):
-            if board[i][j] == " ":
-                available_moves.append((i, j))
-    if available_moves:
-        row, col = random.choice(available_moves)
-        board[row][col] = "O"
-        print_board(board)
-        if check_win(board):
-            messagebox.showinfo("Game Over", "Computer wins!")
-            reset_game()
-        elif all(board[i][j] != " " for i in range(3) for j in range(3)):
-            messagebox.showinfo("Game Over", "It's a tie!")
-            reset_game()
+def ua(a, b, count):
+    a = a - (0.000001 * da(a, b, count))
+    return a
 
-# Function to handle button click events
-def button_click(row, col):
-    if board[row][col] == " ":
-        board[row][col] = "X"
-        print_board(board)
-        if check_win(board):
-            messagebox.showinfo("Game Over", "Player X wins!")
-            reset_game()
-        elif all(board[i][j] != " " for i in range(3) for j in range(3)):
-            messagebox.showinfo("Game Over", "It's a tie!")
-            reset_game()
-        else:
-            make_computer_move()
-    else:
-        messagebox.showwarning("Invalid Move", "Invalid move! Try again.")
+def ub(a, b, count):
+    b = b - (0.000001 * db(a, b, count))
+    return b
 
-# Function to reset the game
-def reset_game():
-    for i in range(3):
-        for j in range(3):
-            board[i][j] = " "
-            buttons[i][j].config(text=" ")
-    print_board(board)
+a = 3
+b = 2
 
-# Function to save the game state
-def save_game(buttons):
-    board_state = [[button["text"] for button in row] for row in buttons]
-    df = pd.DataFrame(board_state)
-    df.to_csv("saved_game.csv", index=False)
-    messagebox.showinfo("Game Saved", "Game saved successfully!")
-    root.quit()
+for i in range(1000):
+    a = ua(a, b, len(list_x))
+    b = ub(a, b, len(list_x))
 
-# Function to load the saved game state
-def load_game(buttons):
-    df = pd.read_csv("saved_game.csv")
-    board_state = df.values.tolist()
-    for i in range(3):
-        for j in range(3):
-            button_text = board_state[i][j]
-            buttons[i][j].config(text=button_text)
-            board[i][j] = button_text
-    print_board(board)
-    messagebox.showinfo("Game Loaded", "Game loaded successfully!")
-# Create the main window
-root = Tk()
-root.title("Tic-Tac-Toe")
 
-# Create the buttons for the game board
-lower_frame = Frame(root)
-lower_frame.grid(row=4, column=0, columnspan=3, padx=4, pady=4)
+plt.scatter(df['col1'], df['col2'])
+for i in range(-1000, 1000, 50):
+    plt.scatter(i, (a * i + b))
+plt.show()
+print(error(a, b,list_x, list_y))
 
-close_button = Button(lower_frame, text="Close", font=("Arial", 18), width=15, height=5, command=root.quit)
-close_button.grid(row=0, column=0, padx=2, pady=4)
 
-save_button = Button(lower_frame, text="Save", font=("Arial", 18), width=15, height=5,
-                     command=lambda: save_game(buttons))
-save_button.grid(row=0, column=1, padx=2, pady=4)
-
-topframe = Frame(root)
-topframe.grid(row=0, column=0, columnspan=5, padx=4, pady=4)
-button_load = Button(topframe, text="Load Game", font=("Arial", 18), width=30, height=2, command=lambda: load_game(buttons))
-button_load.grid(row=0, column=0, padx=5, pady=4)
-
-buttons = []
-for i in range(3):
-    row_buttons = []
-    for j in range(3):
-        button = Button(root, text=" ", font=("Arial", 18), width=9, height=3,
-                        command=lambda row=i, col=j: button_click(row, col))
-        button.grid(row=i+1, column=j, padx=4, pady=4)
-        row_buttons.append(button)
-    buttons.append(row_buttons)
-
-# Create the game board
-board = [[" ", " ", " "], [" ", " ", " "], [" ", " ", " "]]
-
-# Start the game
-print_board(board)
-
-# Run the Tkinter event loop
-root.mainloop()
